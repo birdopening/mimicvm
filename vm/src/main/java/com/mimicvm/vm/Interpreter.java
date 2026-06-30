@@ -13,7 +13,7 @@ public final class Interpreter implements Opcodes {
         this.frame = new Frame(method);
     }
 
-    public void run() {
+    public int run() {
         final byte[] insns = method.insns();
         int pc = 0;
 
@@ -24,7 +24,11 @@ public final class Interpreter implements Opcodes {
                 int value = ((insns[pc] & 0xFF) << 24) | ((insns[pc + 1] & 0xFF) << 16) | ((insns[pc + 2] & 0xFF) << 8) | (insns[pc + 3] & 0xFF);
                 pc += 4;
                 frame.getStack().push(value);
+            } else if (opcode == RETURN) {
+                return frame.getStack().pop();
             }
         }
+
+        throw new IllegalStateException("missing RETURN");
     }
 }
