@@ -1,17 +1,20 @@
 package com.mimicvm.vm;
 
 import com.mimicvm.shared.method.VMethod;
+import com.mimicvm.shared.method.VModule;
 import com.mimicvm.shared.op.Opcodes;
 import com.mimicvm.shared.type.Value;
 import com.mimicvm.shared.utils.ByteUtils;
 
 public final class Interpreter implements Opcodes {
 
+    private final VModule module;
     private final VMethod method;
     private final Frame frame;
 
-    public Interpreter(VMethod method) {
-        this.method = method;
+    public Interpreter(VModule module, int methodIdx) {
+        this.module = module;
+        this.method = module.method(methodIdx);
         this.frame = new Frame(method);
     }
 
