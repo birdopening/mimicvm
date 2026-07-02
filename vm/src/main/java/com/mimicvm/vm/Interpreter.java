@@ -31,58 +31,84 @@ public final class Interpreter implements Opcodes {
             int pc = frame.getPc();
             final byte opc = insns[pc++];
 
-            if (opc == I32_CONST) {
-                final int value = ByteUtils.readI32(insns, pc);
-                pc += 4;
-                frame.getStack().push(Value.i32(value));
-            } else if (opc == LOCAL_GET) {
-                final int idx = insns[pc++] & 0xFF;
-                frame.getStack().push(frame.getLocals().get(idx));
-            } else if (opc == LOCAL_SET) {
-                final int index = insns[pc++] & 0xFF;
-                frame.getLocals().set(index, frame.getStack().pop());
-            } else if (opc == I32_ADD) {
-                final int b = frame.getStack().pop().data();
-                final int a = frame.getStack().pop().data();
-                frame.getStack().push(Value.i32(a + b));
-            } else if (opc == I32_SUB) {
-                final int b = frame.getStack().pop().data();
-                final int a = frame.getStack().pop().data();
-                frame.getStack().push(Value.i32(a - b));
-            } else if (opc == I32_MUL) {
-                final int b = frame.getStack().pop().data();
-                final int a = frame.getStack().pop().data();
-                frame.getStack().push(Value.i32(a * b));
-            } else if (opc == CALL) {
-                final int methodIdx = insns[pc++] & 0xFF;
-                final VMethod callee = module.method(methodIdx);
-                final Frame calleeFrame = new Frame(callee);
-
-                for (int i = callee.paramCount() - 1; i >= 0; i--) {
-                    calleeFrame.getLocals().set(i, frame.getStack().pop());
-                }
-                callStack.push(calleeFrame);
-            } else if (opc == JUMP) {
-                pc = ByteUtils.readI32(insns, pc);
-            } else if (opc == I32_EQ) {
-                final int b = frame.getStack().pop().data();
-                final int a = frame.getStack().pop().data();
-                frame.getStack().push(Value.i32(a == b ? 1 : 0));
-            } else if (opc == RETURN) {
-                final Value result = frame.getStack().pop();
-                callStack.pop();
-                if (callStack.isEmpty()) {
-                    return result;
+            switch (opc) {
+                case I32_CONST -> {
+                    final int value = ByteUtils.readI32(insns, pc);
+                    pc += 4;
+                    frame.getStack().push(Value.i32(value));
                 }
 
-                callStack.peek().getStack().push(result);
-            } else if (opc == RETURN_VOID) {
-                callStack.pop();
-                if (callStack.isEmpty()) {
-                    return null;
+                case LOCAL_GET -> {
+                    final int idx = insns[pc++] & 0xFF;
+                    frame.getStack().push(frame.getLocals().get(idx));
                 }
-            } else {
-                throw new IllegalStateException("unknown opc: " + (opc & 0xFF));
+
+                case LOCAL_SET -> {
+                    final int index = insns[pc++] & 0xFF;
+                    frame.getLocals().set(index, frame.getStack().pop());
+                }
+
+                case I32_ADD -> {
+                    final int b = frame.getStack().pop().data();
+                    final int a = frame.getStack().pop().data();
+                    frame.getStack().push(Value.i32(a + b));
+                }
+
+                case I32_SUB -> {
+                    final int b = frame.getStack().pop().data();
+                    final int a = frame.getStack().pop().data();
+                    frame.getStack().push(Value.i32(a - b));
+                }
+
+                case I32_MUL -> {
+                    final int b = frame.getStack().pop().data();
+                    final int a = frame.getStack().pop().data();
+                    frame.getStack().push(Value.i32(a * b));
+                }
+
+                case CALL -> {
+                    final int methodIdx = insns[pc++] & 0xFF;
+                    final VMethod callee = module.method(methodIdx);
+                    final Frame calleeFrame = new Frame(callee);
+
+                    for (int i = callee.paramCount() - 1; i >= 0; i--) {
+                        calleeFrame.getLocals().set(i, frame.getStack().pop());
+                    }
+
+                    callStack.push(calleeFrame);
+                }
+
+                case JUMP -> pc = ByteUtils.readI32(insns, pc);
+
+                case I32_EQ -> {
+                    final int b = frame.getStack().pop().data();
+                    final int a = frame.getStack().pop().data();
+                    frame.getStack().push(Value.i32(a == b ? 1 : 0));
+                }
+
+                case RETURN -> {
+                    final Value result = frame.getStack().pop();
+                    callStack.pop();
+
+                    if (callStack.isEmpty()) {
+                        return result;
+                    }
+
+                    callStack.peek().getStack().push(result);
+                    continue;
+                }
+
+                case RETURN_VOID -> {
+                    callStack.pop();
+
+                    if (callStack.isEmpty()) {
+                        return null;
+                    }
+
+                    continue;
+                }
+
+                default -> throw new IllegalStateException("unknown opc: " + (opc & 0xFF));
             }
 
             frame.setPc(pc);
