@@ -12,6 +12,11 @@ public interface Opcodes {
     int I32_MUL = 0x12;
     int I32_DIV = 0x13;
 
+    int I64_ADD = 0x14;
+    int I64_SUB = 0x15;
+    int I64_MUL = 0x16;
+    int I64_DIV = 0x17;
+
     int RETURN = 0x20;
     int RETURN_VOID = 0x21;
 
