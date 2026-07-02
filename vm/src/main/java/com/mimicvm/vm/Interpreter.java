@@ -6,23 +6,29 @@ import com.mimicvm.shared.op.Opcodes;
 import com.mimicvm.shared.type.Value;
 import com.mimicvm.shared.utils.ByteUtils;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+
 public final class Interpreter implements Opcodes {
 
     private final VModule module;
     private final VMethod method;
-    private final Frame frame;
+
+    private final Deque<Frame> callStack = new ArrayDeque<>();
 
     public Interpreter(VModule module, int methodIdx) {
         this.module = module;
         this.method = module.method(methodIdx);
-        this.frame = new Frame(method);
+
+        callStack.push(new Frame(method));
     }
 
     public Value run() {
-        final byte[] insns = method.insns();
-        int pc = 0;
+        while (callStack.peek().getPc() < callStack.peek().getMethod().insns().length) {
+            final Frame frame = callStack.peek();
+            final byte[] insns = frame.getMethod().insns();
 
-        while (pc < insns.length) {
+            int pc = frame.getPc();
             final byte opc = insns[pc++];
 
             if (opc == I32_CONST) {
@@ -47,6 +53,10 @@ public final class Interpreter implements Opcodes {
                 final int b = frame.getStack().pop().data();
                 final int a = frame.getStack().pop().data();
                 frame.getStack().push(Value.i32(a * b));
+            } else if (opc == CALL) {
+                final int methodIdx = insns[pc++] & 0xFF;
+                final VMethod callee = module.method(methodIdx);
+                callStack.push(new Frame(callee));
             } else if (opc == RETURN) {
                 return frame.getStack().pop();
             } else if (opc == RETURN_VOID) {
@@ -54,6 +64,8 @@ public final class Interpreter implements Opcodes {
             } else {
                 throw new IllegalStateException("unknown opc: " + (opc & 0xFF));
             }
+
+            frame.setPc(pc);
         }
 
         throw new IllegalStateException("missing RETURN");
