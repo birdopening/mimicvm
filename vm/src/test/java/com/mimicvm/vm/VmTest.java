@@ -94,4 +94,59 @@ class VmTest implements Opcodes {
 
         assertEquals(Value.i32(1000), result);
     }
+
+    @Test
+    void testForLoop() {
+
+        final byte[] insns = {
+                /*
+                  int sum = 0
+                */
+                (byte) I32_CONST, 0x0, 0x0, 0x0, 0x0, // 0
+                (byte) LOCAL_SET, 0x0, // 5
+                /*
+                  int i = 0
+                */
+                (byte) I32_CONST, 0x0, 0x0, 0x0, 0x0, // 7
+                (byte) LOCAL_SET, 0x1, // 12
+
+                /*
+                  if i less than 10
+                  goto 30
+                */
+                (byte) LOCAL_GET, 0x1, // 14
+                (byte) I32_CONST, 0x0, 0x0, 0x0, 0xA, // 16
+                I32_LT, // 21
+                (byte) JUMP_IF, 0x0, 0x0, 0x0, 0x1E, // 22
+
+                /*
+                  no jump
+                */
+                (byte) LOCAL_GET, 0x0, // 27
+                (byte) RETURN, // 29
+
+                /*
+                  sum += i
+                  i++
+                  goto loop
+                */
+                (byte) LOCAL_GET, 0x0, // 30 push sum
+                (byte) LOCAL_GET, 0x1, // 32 push i
+                (byte) I32_ADD, // 34 sum + i
+                (byte) LOCAL_SET, 0x0, // 35 sum = sum + i
+
+                (byte) LOCAL_GET, 0x1, // 37 push i
+                (byte) I32_CONST, 0x0, 0x0, 0x0, 0x1, // 39 push 1
+                (byte) I32_ADD, // 44 i + 1
+                (byte) LOCAL_SET, 0x1, // 45 = i++
+                (byte) JUMP, 0x0, 0x0, 0x0, 0x0E // 47 go to 14
+        };
+
+        final VModule module = new VModule(new VMethod[]{new VMethod(0, 2, 2, insns)});
+
+        final Value result = new Interpreter(module, 0).run();
+
+        // 0+1+2+3+4+5+6+7+8+9 = 45
+        assertEquals(Value.i32(45), result);
+    }
 }
